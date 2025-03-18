@@ -18,7 +18,7 @@ def find_best_match(transcribed_text, lyrics):
 
 def transcribe_audio(audio_file, lyrics_file, output_srt):
     """Transcribes an audio file and generates an SRT file using lyrics as a reference."""
-    model = whisper.load_model("large")  # You can use "small", "base", etc.
+    model = whisper.load_model("medium")  # You can use "small", "base", etc.
     result = model.transcribe(audio_file)
     lyrics = load_lyrics(lyrics_file)
 
@@ -47,4 +47,4 @@ def format_time(seconds):
 
 # Example Usage
 if __name__ == "__main__":
-    transcribe_audio("audio/lonely.mp3", "lyrics/lonely.txt", "output.srt")
+    transcribe_audio("audio/narita.wav", "lyrics/narita.txt", "output.srt")
