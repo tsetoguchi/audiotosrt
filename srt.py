@@ -1,39 +1,78 @@
 import whisper
 import re
-from difflib import get_close_matches
+import string
+from tqdm import tqdm
+
+# Update these settings
+LANGUAGE = "en"
+MODEL_SIZE = "medium"
+LYRICS = "Hold On.txt"
+AUDIO = "Hold On.mp3"
+OUTPUT_NAME = f"{AUDIO} SRT"
+
+
+def normalize_text(text):
+    """Normalizes text for better matching."""
+    # Convert to lowercase
+    text = text.lower()
+    # Remove punctuation
+    text = text.translate(str.maketrans('', '', string.punctuation))
+    # Normalize whitespace
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
 
 
 def load_lyrics(lyrics_file):
     """Loads and cleans a lyrics file."""
     with open(lyrics_file, "r", encoding="utf-8") as f:
         lyrics = f.readlines()
-    return [line.strip() for line in lyrics if line.strip()]
 
+    # Process lyrics
+    cleaned_lyrics = []
+    for line in lyrics:
+        line = line.strip()
+        if line:
+            cleaned_lyrics.append(line)
 
-def find_best_match(transcribed_text, lyrics):
-    """Finds the closest match in lyrics for a transcribed segment."""
-    match = get_close_matches(transcribed_text, lyrics, n=1, cutoff=0.5)
-    return match[0] if match else transcribed_text
+    print(f"Loaded {len(cleaned_lyrics)} lines from lyrics file")
+    return cleaned_lyrics
 
 
 def transcribe_audio(audio_file, lyrics_file, output_srt):
-    """Transcribes an audio file and generates an SRT file using lyrics as a reference."""
-    model = whisper.load_model("medium")  # You can use "small", "base", etc.
-    result = model.transcribe(audio_file)
-    lyrics = load_lyrics(lyrics_file)
+    """Transcribes an audio file and generates an SRT file."""
+    print("Loading model...")
+    model = whisper.load_model(MODEL_SIZE)
+    print("Transcribing audio...")
 
+    # Use specified language setting
+    result = model.transcribe(audio_file, language=LANGUAGE)
+
+    # Load lyrics (we'll use them for line-by-line alignment)
+    lyrics = load_lyrics(lyrics_file)
+    lyrics_index = 0
+
+    # Generate SRT file directly from transcription
     with open(output_srt, "w", encoding="utf-8") as f:
-        for i, segment in enumerate(result["segments"], start=1):
+        for i, segment in enumerate(tqdm(result["segments"], desc="Generating SRT", unit="segment"), start=1):
             start = segment["start"]
             end = segment["end"]
-            text = segment["text"]
-            matched_text = find_best_match(text, lyrics)
+            text = segment["text"].strip()
+
+            # If we have lyrics available and haven't used them all
+            if lyrics_index < len(lyrics):
+                # Use the next lyric from the file
+                output_text = lyrics[lyrics_index]
+                lyrics_index += 1
+            else:
+                # If we've used all lyrics, use the transcribed text
+                output_text = text
 
             f.write(f"{i}\n")
             f.write(f"{format_time(start)} --> {format_time(end)}\n")
-            f.write(f"{matched_text}\n\n")
+            f.write(f"{output_text}\n\n")
 
-    print(f"SRT file saved: {output_srt}")
+    print(f"\n✅ SRT file saved: {output_srt}")
+    print(f"Used {min(lyrics_index, len(lyrics))} lyrics lines")
 
 
 def format_time(seconds):
@@ -47,4 +86,4 @@ def format_time(seconds):
 
 # Example Usage
 if __name__ == "__main__":
-    transcribe_audio("audio/narita.wav", "lyrics/narita.txt", "output.srt")
+    transcribe_audio(f"audio/{AUDIO}", f"lyrics/{LYRICS}", f"SRT/{OUTPUT_NAME}")
