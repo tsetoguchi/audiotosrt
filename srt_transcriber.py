@@ -1,18 +1,21 @@
+from typing import List
+
 import whisper
 import re
 import string
 from tqdm import tqdm
+import srt_text_comparer
 
 # Update these settings
 LANGUAGE = "en"
 MODEL_SIZE = "medium"
-LYRICS = "Hold On.txt"
-AUDIO = "Hold On.mp3"
-OUTPUT_NAME = f"{AUDIO} SRT"
+LYRICS = "lonely.txt"
+AUDIO = "lonely.mp3"
+OUTPUT_NAME = f"{AUDIO[:-4].title()} SRT"
 
 
-def normalize_text(text):
-    """Normalizes text for better matching."""
+def sanitize_text(text: str) -> str:
+    """Sanitizes text for better matching."""
     # Convert to lowercase
     text = text.lower()
     # Remove punctuation
@@ -22,7 +25,7 @@ def normalize_text(text):
     return text
 
 
-def load_lyrics(lyrics_file):
+def load_lyrics(lyrics_file: str) -> List[str]:
     """Loads and cleans a lyrics file."""
     with open(lyrics_file, "r", encoding="utf-8") as f:
         lyrics = f.readlines()
@@ -38,14 +41,15 @@ def load_lyrics(lyrics_file):
     return cleaned_lyrics
 
 
-def transcribe_audio(audio_file, lyrics_file, output_srt):
+
+def transcribe_to_srt(audio_file: str, lyrics_file: str, output_srt: str, language: str):
     """Transcribes an audio file and generates an SRT file."""
     print("Loading model...")
     model = whisper.load_model(MODEL_SIZE)
     print("Transcribing audio...")
 
     # Use specified language setting
-    result = model.transcribe(audio_file, language=LANGUAGE)
+    result = model.transcribe(audio_file, language=language)
 
     # Load lyrics (we'll use them for line-by-line alignment)
     lyrics = load_lyrics(lyrics_file)
@@ -75,7 +79,8 @@ def transcribe_audio(audio_file, lyrics_file, output_srt):
     print(f"Used {min(lyrics_index, len(lyrics))} lyrics lines")
 
 
-def format_time(seconds):
+
+def format_time(seconds: float) -> str:
     """Converts seconds to SRT time format (hh:mm:ss,ms)."""
     ms = int((seconds % 1) * 1000)
     s = int(seconds) % 60
@@ -86,4 +91,4 @@ def format_time(seconds):
 
 # Example Usage
 if __name__ == "__main__":
-    transcribe_audio(f"audio/{AUDIO}", f"lyrics/{LYRICS}", f"SRT/{OUTPUT_NAME}")
+    transcribe_to_srt(f"audio/{AUDIO}", f"lyrics/{LYRICS}", f"SRT/{OUTPUT_NAME}", LANGUAGE)
